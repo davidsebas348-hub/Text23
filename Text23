@@ -1,121 +1,91 @@
---dont forget to like and follow :))
+-- =========================
+-- TOGGLE THROW KNIFE BEHIND
+-- =========================
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-
 local LocalPlayer = Players.LocalPlayer
 
-local HitboxEnabled = false
-local HitboxSize = 10
-local IsMinimized = false
+if _G.BEHIND_KNIFE_LOOP then
+	_G.BEHIND_KNIFE_LOOP = false
+	print("AUTO THROW KNIFE (KILL): OFF")
+	return
+end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.ResetOnSpawn = false
-local MainFrame = Instance.new("Frame")
-local MainFrameCorner = Instance.new("UICorner")
-local SizeInput = Instance.new("TextBox")
-local SizeInputCorner = Instance.new("UICorner")
-local EnableButton = Instance.new("TextButton")
-local EnableButtonCorner = Instance.new("UICorner")
-local MinimizeButton = Instance.new("TextButton")
-local MinimizeButtonCorner = Instance.new("UICorner")
+_G.BEHIND_KNIFE_LOOP = true
+print("AUTO THROW KNIFE (KILL): ON")
 
-ScreenGui.Parent = game.CoreGui
+local MAX_DISTANCE = 1000
+local BACK_DISTANCE = 5.5
+local INTERVAL = 0.2
 
-MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 160, 0, 110)
-MainFrame.Position = UDim2.new(0.5, -80, 0.5, -55)
-MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-MainFrame.BackgroundTransparency = 0.2
+-- =========================
+-- Buscar jugador más cercano
+-- =========================
+local function getClosestPlayer()
 
-MainFrameCorner.Parent = MainFrame
-MainFrameCorner.CornerRadius = UDim.new(0, 10)
+	local closest = nil
+	local shortest = MAX_DISTANCE
 
-MinimizeButton.Parent = MainFrame
-MinimizeButton.Size = UDim2.new(0, 160, 0, 20)
-MinimizeButton.Position = UDim2.new(0, 0, 0, 0)
-MinimizeButton.Text = "cerrar"
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	local myChar = LocalPlayer.Character
+	if not myChar then return end
 
-MinimizeButtonCorner.Parent = MinimizeButton
-MinimizeButtonCorner.CornerRadius = UDim.new(0, 10)
+	local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+	if not myHRP then return end
 
-SizeInput.Parent = MainFrame
-SizeInput.Size = UDim2.new(0, 140, 0, 25)
-SizeInput.Position = UDim2.new(0, 10, 0, 25)
-SizeInput.Text = "10"
-SizeInput.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-SizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
 
-SizeInputCorner.Parent = SizeInput
-SizeInputCorner.CornerRadius = UDim.new(0, 10)
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
 
-EnableButton.Parent = MainFrame
-EnableButton.Size = UDim2.new(0, 140, 0, 25)
-EnableButton.Position = UDim2.new(0, 10, 0, 55)
-EnableButton.Text = "Enable Hitbox"
-EnableButton.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-EnableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+			if hrp and humanoid and humanoid.Health > 0 then
 
-EnableButtonCorner.Parent = EnableButton
-EnableButtonCorner.CornerRadius = UDim.new(0, 10)
+				local dist = (hrp.Position - myHRP.Position).Magnitude
 
-SizeInput.FocusLost:Connect(function()
-    local InputValue = tonumber(SizeInput.Text)
-    if InputValue and InputValue > 0 then
-        HitboxSize = InputValue
-    else
-        SizeInput.Text = tostring(HitboxSize)
-    end
-end)
+				if dist < shortest then
+					shortest = dist
+					closest = player
+				end
+			end
+		end
+	end
 
-EnableButton.MouseButton1Click:Connect(function()
-    -- Verificar si el jugador tiene "Knife" en el inventario
-    local HasKnife = LocalPlayer.Backpack:FindFirstChild("Knife") or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Knife"))
-    
-    if not HasKnife then
-        EnableButton.Text = "Need Knife!"
-        EnableButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-        return
-    end
+	return closest
+end
 
-    -- Activar/desactivar hitbox si tiene Knife
-    HitboxEnabled = not HitboxEnabled
-    EnableButton.Text = HitboxEnabled and "Disable Hitbox" or "Enable Hitbox"
-    EnableButton.BackgroundColor3 = HitboxEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(90, 90, 90)
-end)
+-- =========================
+-- Lanzar cuchillo
+-- =========================
+local function throwKnife()
 
-MinimizeButton.MouseButton1Click:Connect(function()
-    IsMinimized = not IsMinimized
-    
-    local TargetSize = IsMinimized and UDim2.new(0, 160, 0, 20) or UDim2.new(0, 160, 0, 110)
-    local CollapseTween = TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = TargetSize
-    })
-    
-    CollapseTween:Play()
-    MinimizeButton.Text = IsMinimized and "abrir" or "cerrar"
-end)
+	local myChar = LocalPlayer.Character
+	if not myChar then return end
 
-RunService.RenderStepped:Connect(function()
-    if not HitboxEnabled then return end
-    
-    for _, Player in ipairs(Players:GetPlayers()) do
-        if Player ~= LocalPlayer and Player.Character then
-            local RootPart = Player.Character:FindFirstChild("HumanoidRootPart")
-            if RootPart then
-                RootPart.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
-                RootPart.Transparency = 0.8
-                RootPart.BrickColor = BrickColor.new("Really red")
-                RootPart.Material = Enum.Material.Neon
-                RootPart.CanCollide = false
-            end
-        end
-    end
+	local knife = myChar:FindFirstChild("Knife")
+	if not knife then return end
+
+	local target = getClosestPlayer()
+	if not target or not target.Character then return end
+
+	local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+	if not targetHRP then return end
+
+	local behindPosition = targetHRP.Position - (targetHRP.CFrame.LookVector * BACK_DISTANCE)
+
+	knife.Events.KnifeThrown:FireServer(
+		CFrame.new(behindPosition),
+		targetHRP.CFrame
+	)
+end
+
+-- =========================
+-- LOOP CONTROLADO
+-- =========================
+task.spawn(function()
+
+	while _G.BEHIND_KNIFE_LOOP do
+		throwKnife()
+		task.wait(INTERVAL)
+	end
+
 end)
